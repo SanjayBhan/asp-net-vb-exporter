@@ -284,7 +284,7 @@ Partial Public Class FCExporter
         Dim svgStr As String = ""
 
         IsSVGData = False
-
+        Dim test As String = Request("stream_type")
         If Request("stream_type") = "svg" Then
             IsSVGData = True
             exportData("svg") = Request("stream")
@@ -309,7 +309,14 @@ Partial Public Class FCExporter
             Dim svg As Byte() = System.Text.Encoding.UTF8.GetBytes(exportData("svg").ToString())
             svgStream = New MemoryStream(svg)
             svgData = New StreamReader(svgStream)
-        Else
+
+        ElseIf Request("stream_type") = "IMAGE-DATA" Then
+
+            'for modern browser exporting
+            convertRAWImageDataToFile(Request("stream"), Request("parameters"))
+
+        ElseIf Request("stream_type") = "image-data" Then
+
             ' If Flash Charts
             If Request("stream_type") = "image-data" Then
                 isImgData = True
@@ -335,6 +342,7 @@ Partial Public Class FCExporter
                 Dim parameters As Hashtable = parseParams(Request("parameters"))
                 exportData("parameters") = parameters
             End If
+
         End If
 
         'get width and height of the chart
@@ -378,6 +386,22 @@ Partial Public Class FCExporter
     Private Function base64Decode(data As String) As Byte()
         Return Convert.FromBase64String(data)
     End Function
+
+
+    Private Sub convertRAWImageDataToFile(imageData As String, parameters As String)
+
+        Dim fileName As String = parameters.Split("|"c)(0).Split("="c)(1), extention As String = parameters.Split("|"c)(1).Split("="c)(1), exportAction As String = parameters.Split("|"c)(2).Split("="c)(1), fullFileName As String = fileName & "." & extention, filLocation As String = HttpContext.Current.Server.MapPath("~/Exported_Images/" & fullFileName)
+        Dim bytes As Byte() = base64Decode(imageData.Split(","c)(1))
+        File.WriteAllBytes(filLocation, bytes)
+        If exportAction = "download" Then
+            Response.ClearContent()
+            Response.AddHeader("Content-Disposition", "attachment; filename=" & fullFileName)
+            Response.ContentType = "text/plain"
+            Response.TransmitFile(filLocation)
+            Response.[End]()
+        End If
+    End Sub
+
 
     Private Sub convertRawImageDataToFile(exportData As Hashtable)
         Dim fileName As [String] = ""
