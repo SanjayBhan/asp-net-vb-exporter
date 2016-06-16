@@ -150,14 +150,14 @@ Partial Public Class FCExporter
     ''' The value is semicolon separated key value pair for each format
     ''' Each key is the format and value is the MIME type
     ''' </summary>
-    Private Const MIMETYPES As String = "pdf=application/pdf;jpg=image/jpeg;jpeg=image/jpeg;gif=image/gif;png=image/png;svg=image/svg+xml"
+    Private Const MIMETYPES As String = "pdf=application/pdf;jpg=image/jpeg;jpeg=image/jpeg;gif=image/gif;png=image/png;svg=image/svg+xml;xls=application/vnd.ms-excel"
 
     ''' <summary>
     ''' This is a constant list of all the file extensions for the export formats
     ''' The value is semicolon separated key value pair for each format
     ''' Each key is the format and value is the file extension 
     ''' </summary>
-    Private Const EXTENSIONS As String = "pdf=pdf;jpg=jpg;jpeg=jpg;gif=gif;png=png;svg=svg"
+    Private Const EXTENSIONS As String = "pdf=pdf;jpg=jpg;jpeg=jpg;gif=gif;png=png;svg=svg;xls=xls"
 
     ''' <summary>
     ''' Lists the default exportParameter values taken, if not provided by chart
@@ -391,12 +391,13 @@ Partial Public Class FCExporter
     Private Sub convertRAWImageDataToFile(imageData As String, parameters As String)
 
         Dim fileName As String = parameters.Split("|"c)(0).Split("="c)(1), extention As String = parameters.Split("|"c)(1).Split("="c)(1), exportAction As String = parameters.Split("|"c)(2).Split("="c)(1), fullFileName As String = fileName & "." & extention, filLocation As String = HttpContext.Current.Server.MapPath("~/Exported_Images/" & fullFileName)
+        Dim contentType As String = getMime(extention)
         Dim bytes As Byte() = base64Decode(imageData.Split(","c)(1))
         File.WriteAllBytes(filLocation, bytes)
         If exportAction = "download" Then
             Response.ClearContent()
             Response.AddHeader("Content-Disposition", "attachment; filename=" & fullFileName)
-            Response.ContentType = "text/plain"
+            Response.ContentType = contentType
             Response.TransmitFile(filLocation)
             Response.[End]()
         End If
