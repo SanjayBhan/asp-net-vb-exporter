@@ -11,7 +11,7 @@
 ' *
 ' *    @author FusionCharts
 ' *    @description FusionCharts Exporter (Server-Side - ASP.NET C#)
-' *    @version 3.0 [ 18 July 2014 ]
+' *    @version 4.0 [ 21 June 2016 ]
 ' *  
 ' 
 
