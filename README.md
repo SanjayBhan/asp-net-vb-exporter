@@ -16,6 +16,10 @@ How does the export handler work?
 - The export handler either writes the image or PDF to disk, based on the configuration provided by chart, or streams it 
    back to the browser.
 
+Version
+----
+
+4.0.0
 
 Requirements
 ------------
@@ -29,9 +33,17 @@ Installation
 - Set the URL of 'FCExporter.aspx' from the above web application into the chart's 'exportHandler' attribute
 - Make sure 'IUSR' has proper read/write permission in the 'Exported_Images' folder
 - FusionCharts' export request contains some XML data, which is restricted in .NET 4 or above. You may need to add the following configuration in your 'web.config' file:
+```
 <system.web>
 	<httpRuntime requestValidationMode="2.0"/>
 </system.web>
+```
+- JS error is thrown during svg export if any image, present in same domain, is used in chart. You may need to add the following configuration in your 'web.config' file:
+```
+<system.web>
+	<httpRuntime executionTimeout="999999" maxRequestLength="2000000000" requestValidationMode="2.0" />
+</system.web>
+```
 
 
 Licensing
