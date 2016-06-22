@@ -11,13 +11,18 @@
 ' *
 ' *    @author FusionCharts
 ' *    @description FusionCharts Exporter (Server-Side - ASP.NET C#)
-' *    @version 3.0 [ 18 July 2014 ]
+' *    @version 4.0 [ 21 June 2016 ]
 ' *  
 ' 
 
 '*
 ' *  ChangeLog / Version History:
 ' *  ----------------------------
+' *
+' *   4.0 [ 21 June 2016 ]
+' *       - Support export if direct image base64 encoded data is provided (for FusionCharts v 3.11.0 or more).
+' *       - Support for download of xls format.
+' *       - Export with images suppported for every format including svg if browser is capable of sending the image data as base64 data.
 ' *
 ' *   3.0 [ 18 July 2014 ]
 ' *       - Support for JavaScript Chart (SVG)
@@ -35,7 +40,7 @@
 ' 
 
 '*
-' * Copyright (c) 2014 InfoSoft Global Private Limited. All Rights Reserved
+' * Copyright (c) 2016 InfoSoft Global Private Limited. All Rights Reserved
 ' * 
 ' 
 
@@ -150,14 +155,14 @@ Partial Public Class FCExporter
     ''' The value is semicolon separated key value pair for each format
     ''' Each key is the format and value is the MIME type
     ''' </summary>
-    Private Const MIMETYPES As String = "pdf=application/pdf;jpg=image/jpeg;jpeg=image/jpeg;gif=image/gif;png=image/png;svg=image/svg+xml"
+    Private Const MIMETYPES As String = "pdf=application/pdf;jpg=image/jpeg;jpeg=image/jpeg;gif=image/gif;png=image/png;svg=image/svg+xml;xls=application/vnd.ms-excel"
 
     ''' <summary>
     ''' This is a constant list of all the file extensions for the export formats
     ''' The value is semicolon separated key value pair for each format
     ''' Each key is the format and value is the file extension 
     ''' </summary>
-    Private Const EXTENSIONS As String = "pdf=pdf;jpg=jpg;jpeg=jpg;gif=gif;png=png;svg=svg"
+    Private Const EXTENSIONS As String = "pdf=pdf;jpg=jpg;jpeg=jpg;gif=gif;png=png;svg=svg;xls=xls"
 
     ''' <summary>
     ''' Lists the default exportParameter values taken, if not provided by chart
@@ -284,7 +289,7 @@ Partial Public Class FCExporter
         Dim svgStr As String = ""
 
         IsSVGData = False
-
+        Dim test As String = Request("stream_type")
         If Request("stream_type") = "svg" Then
             IsSVGData = True
             exportData("svg") = Request("stream")
@@ -309,7 +314,14 @@ Partial Public Class FCExporter
             Dim svg As Byte() = System.Text.Encoding.UTF8.GetBytes(exportData("svg").ToString())
             svgStream = New MemoryStream(svg)
             svgData = New StreamReader(svgStream)
-        Else
+
+        ElseIf Request("stream_type") = "IMAGE-DATA" Then
+
+            'for modern browser exporting
+            convertRAWImageDataToFile(Request("stream"), Request("parameters"))
+
+        ElseIf Request("stream_type") = "image-data" Then
+
             ' If Flash Charts
             If Request("stream_type") = "image-data" Then
                 isImgData = True
@@ -335,6 +347,7 @@ Partial Public Class FCExporter
                 Dim parameters As Hashtable = parseParams(Request("parameters"))
                 exportData("parameters") = parameters
             End If
+
         End If
 
         'get width and height of the chart
@@ -378,6 +391,23 @@ Partial Public Class FCExporter
     Private Function base64Decode(data As String) As Byte()
         Return Convert.FromBase64String(data)
     End Function
+
+
+    Private Sub convertRAWImageDataToFile(imageData As String, parameters As String)
+
+        Dim fileName As String = parameters.Split("|"c)(0).Split("="c)(1), extention As String = parameters.Split("|"c)(1).Split("="c)(1), exportAction As String = parameters.Split("|"c)(2).Split("="c)(1), fullFileName As String = fileName & "." & extention, filLocation As String = HttpContext.Current.Server.MapPath("~/Exported_Images/" & fullFileName)
+        Dim contentType As String = getMime(extention)
+        Dim bytes As Byte() = base64Decode(imageData.Split(","c)(1))
+        File.WriteAllBytes(filLocation, bytes)
+        If exportAction = "download" Then
+            Response.ClearContent()
+            Response.AddHeader("Content-Disposition", "attachment; filename=" & fullFileName)
+            Response.ContentType = contentType
+            Response.TransmitFile(filLocation)
+            Response.[End]()
+        End If
+    End Sub
+
 
     Private Sub convertRawImageDataToFile(exportData As Hashtable)
         Dim fileName As [String] = ""
