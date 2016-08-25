@@ -19,6 +19,8 @@
 ' *  ChangeLog / Version History:
 ' *  ----------------------------
 ' *
+' *   4.0.1 [25 Aug 2016]
+' *       - fixes for throwing Null pointer Exception while exporting as jpeg in save export action
 ' *   4.0 [ 21 June 2016 ]
 ' *       - Support export if direct image base64 encoded data is provided (for FusionCharts v 3.11.0 or more).
 ' *       - Support for download of xls format.
