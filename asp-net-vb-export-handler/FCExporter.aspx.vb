@@ -19,6 +19,8 @@
 ' *  ChangeLog / Version History:
 ' *  ----------------------------
 ' *
+' *   4.0.1 [25 Aug 2016]
+' *       - fixes for throwing Null pointer Exception while exporting as jpeg in save export action
 ' *   4.0 [ 21 June 2016 ]
 ' *       - Support export if direct image base64 encoded data is provided (for FusionCharts v 3.11.0 or more).
 ' *       - Support for download of xls format.
@@ -183,6 +185,11 @@ Partial Public Class FCExporter
     ''' </summary>
     Private DOMId As String
 
+    ''' <summary>
+    ''' Where the browser is latest. Default value is false.
+    ''' </summary>
+    Private isLatest As Boolean = False
+
     Public Property IsSVGData() As Boolean
         Get
             Return m_IsSVGData
@@ -231,46 +238,47 @@ Partial Public Class FCExporter
 
         ' process export data and get the processed data (image/PDF) to be exported
         Dim exportObject As MemoryStream = Nothing
-
-        If IsSVGData Then
-            If exportData("encodedImgData") IsNot Nothing AndAlso exportData("encodedImgData").ToString() <> "" AndAlso DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString() = "svg" Then
-                exportObject = exportProcessor(DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString(), exportData("svg").ToString(), DirectCast(exportData("parameters"), Hashtable), exportData("encodedImgData").ToString())
-            Else
-                exportObject = exportProcessor(DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString(), "svg", DirectCast(exportData("parameters"), Hashtable))
-
-            End If
-        Else
-            If isImgData Then
-                convertRawImageDataToFile(exportData)
-            Else
+        If Not isLatest Then
+            If IsSVGData Then
                 If exportData("encodedImgData") IsNot Nothing AndAlso exportData("encodedImgData").ToString() <> "" AndAlso DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString() = "svg" Then
-                    exportObject = exportProcessor(DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString(), "svg", DirectCast(exportData("parameters"), Hashtable), exportData("encodedImgData").ToString())
+                    exportObject = exportProcessor(DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString(), exportData("svg").ToString(), DirectCast(exportData("parameters"), Hashtable), exportData("encodedImgData").ToString())
                 Else
                     exportObject = exportProcessor(DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString(), "svg", DirectCast(exportData("parameters"), Hashtable))
+
+                End If
+            Else
+                If isImgData Then
+                    convertRAWImageDataToFile(exportData)
+                Else
+                    If exportData("encodedImgData") IsNot Nothing AndAlso exportData("encodedImgData").ToString() <> "" AndAlso DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString() = "svg" Then
+                        exportObject = exportProcessor(DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString(), "svg", DirectCast(exportData("parameters"), Hashtable), exportData("encodedImgData").ToString())
+                    Else
+                        exportObject = exportProcessor(DirectCast(exportData("parameters"), Hashtable)("exportformat").ToString(), "svg", DirectCast(exportData("parameters"), Hashtable))
+                    End If
                 End If
             End If
+
+            '
+            '         * Send the export binary to output module which would either save to a server directory
+            '         * or send the export file to download. Download terminates the process while
+            '         * after save the output module sends back export status 
+            '         
+
+            'object exportedStatus = IsSVGData ? outputExportObject(exportObject, exportData) : outputExportObject(exportObject, (Hashtable)exportData["parameters"]);
+            Dim exportedStatus As Object = outputExportObject(exportObject, DirectCast(exportData("parameters"), Hashtable))
+
+            ' Dispose export object
+            exportObject.Close()
+            exportObject.Dispose()
+
+            '
+            '         * Build Appropriate Export Status and send back to chart by flushing the  
+            '         * procesed status to http response. This returns status back to chart. 
+            '         * [ This is not applicable when Download action took place ]
+            '         
+
+            flushStatus(exportedStatus, DirectCast(exportData("meta"), Hashtable))
         End If
-
-        '
-        '         * Send the export binary to output module which would either save to a server directory
-        '         * or send the export file to download. Download terminates the process while
-        '         * after save the output module sends back export status 
-        '         
-
-        'object exportedStatus = IsSVGData ? outputExportObject(exportObject, exportData) : outputExportObject(exportObject, (Hashtable)exportData["parameters"]);
-        Dim exportedStatus As Object = outputExportObject(exportObject, DirectCast(exportData("parameters"), Hashtable))
-
-        ' Dispose export object
-        exportObject.Close()
-        exportObject.Dispose()
-
-        '
-        '         * Build Appropriate Export Status and send back to chart by flushing the  
-        '         * procesed status to http response. This returns status back to chart. 
-        '         * [ This is not applicable when Download action took place ]
-        '         
-
-        flushStatus(exportedStatus, DirectCast(exportData("meta"), Hashtable))
 
     End Sub
 
@@ -319,6 +327,7 @@ Partial Public Class FCExporter
 
             'for modern browser exporting
             convertRAWImageDataToFile(Request("stream"), Request("parameters"))
+            isLatest = True
 
         ElseIf Request("stream_type") = "image-data" Then
 
